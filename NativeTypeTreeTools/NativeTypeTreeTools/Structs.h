@@ -84,7 +84,7 @@ struct DerivedFromInfo
 	uint32_t typeIndex;
 	uint32_t descendantCount;
 };
-
+#ifdef UNITY_2017_3_OR_NEWER
 struct RTTIClass {
 	RTTIClass* base;
 	void* factory; // probably constructor
@@ -99,8 +99,21 @@ struct RTTIClass {
 	bool isEditorOnly;
 	void* attributes;
 	uint64_t attributeCount;
-
 };
+#else
+struct RTTIClass {
+	RTTIClass* base;
+	void* factory; // probably constructor
+	const char* className;
+	const char* classNamespace;
+	PersistentTypeID persistentTypeID;
+	int32_t size;
+	DerivedFromInfo derivedFromInfo;
+	bool isAbstract;
+	bool isSealed;
+	bool isEditorOnly;
+};
+#endif
 struct RuntimeTypeArray
 {
 	size_t count;

@@ -30,10 +30,12 @@ BOOL APIENTRY DllMain( HMODULE hModule,
 }
 typedef void(__cdecl* GenerateTypeTree_t)(Object* object, TypeTree* typeTree, TransferInstructionFlags options);
 GenerateTypeTree_t GenerateTypeTree;
-
+#ifdef UNITY_2017_3_OR_NEWER
 typedef Object* (__cdecl* Object__Produce_t)(struct RTTIClass* classInfo, struct RTTIClass* classInfo2, int instanceID, MemLabelId memLabel, ObjectCreationMode mode);
+#else
+typedef Object* (__cdecl* Object__Produce_t)(struct RTTIClass* classInfo, int instanceID, MemLabelId memLabel, ObjectCreationMode mode);
+#endif
 Object__Produce_t Object__Produce;
-
 
 
 typedef MonoObject*(__cdecl* EditorUtility_CUSTOM_InstanceIDToObject_t)(int instanceID);
@@ -80,9 +82,16 @@ void InitBindings(const char* moduleName) {
     unsigned long long address;
     importer.AssignAddress("?BufferBegin@CommonString@Unity@@3QEBDEB", (void*&)CommonString_BufferBegin);
     importer.AssignAddress("?BufferEnd@CommonString@Unity@@3QEBDEB", (void*&)CommonString_BufferEnd);
+#ifdef UNITY_2017_3_OR_NEWER
     importer.AssignAddress("?ms_runtimeTypes@RTTI@@0URuntimeTypeArray@1@A", (void*&)gRuntimeTypeArray);
-    importer.AssignAddress("?Produce@Object@@CAPEAV1@PEBVType@Unity@@0HUMemLabelId@@W4ObjectCreationMode@@@Z", 
-        (void*&)Object__Produce);
+	importer.AssignAddress("?Produce@Object@@CAPEAV1@PEBVType@Unity@@0HUMemLabelId@@W4ObjectCreationMode@@@Z",
+		(void*&)Object__Produce);
+#else
+	importer.AssignAddress("?ms_runtimeTypes@RTTI@@2URuntimeTypeArray@1@A", (void*&)gRuntimeTypeArray);
+	importer.AssignAddress("?Produce@Object@@SAPEAV1@PEBVType@Unity@@HUMemLabelId@@W4ObjectCreationMode@@@Z",
+		(void*&)Object__Produce);
+#endif
+
 	importer.AssignAddress("?kMemTypeTree@@3UMemLabelId@@A",
 		(void*&)kMemTypeTree);
 
@@ -145,7 +154,11 @@ Object* GetOrProduce(RTTIClass * type, int instanceID, ObjectCreationMode creati
 	}
 	if (type->isAbstract) return NULL;
 	MemLabelId memLabel{};
+#ifdef UNITY_2017_3_OR_NEWER
 	return Object__Produce(type, type, 0, memLabel, ObjectCreationMode::Default);
+#else
+	return Object__Produce(type, 0, memLabel, ObjectCreationMode::Default);
+#endif
 }
 void DestroyObject(Object* obj, RTTIClass* type) {
 	if (!obj->IsPersistent() &&
@@ -243,15 +256,19 @@ extern "C" {
         LOG_MEMBER(RTTIClass, factory);
         LOG_MEMBER(RTTIClass, className);
         LOG_MEMBER(RTTIClass, classNamespace);
+#ifdef UNITY_2017_3_OR_NEWER
         LOG_MEMBER(RTTIClass, module);
+#endif
         LOG_MEMBER(RTTIClass, persistentTypeID);
         LOG_MEMBER(RTTIClass, size);
         LOG_MEMBER(RTTIClass, derivedFromInfo);
         LOG_MEMBER(RTTIClass, isAbstract);
         LOG_MEMBER(RTTIClass, isSealed);
         LOG_MEMBER(RTTIClass, isEditorOnly);
+#ifdef UNITY_2017_3_OR_NEWER
         LOG_MEMBER(RTTIClass, attributes);
 		LOG_MEMBER(RTTIClass, attributeCount);
+#endif
         Log("\n");
 
 
@@ -333,7 +350,6 @@ extern "C" {
 					i,
 					type->classNamespace ,
 					type->className,
-					type->module,
 					type->persistentTypeID,
 					type->size);
 				Log("Type %d getting base type", i);
@@ -345,7 +361,6 @@ extern "C" {
 					i,
 					iter->classNamespace,
 					iter->className,
-					iter->module,
 					iter->persistentTypeID,
 					iter->size);
 				Log("Type %d Getting native object\n", i);
