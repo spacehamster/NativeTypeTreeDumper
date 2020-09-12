@@ -2,7 +2,6 @@
 using System.IO;
 using System.Linq;
 using UnityEditor;
-using UnityEditor.Compilation;
 using UnityEngine;
 
 namespace TypeTreeTools
@@ -68,11 +67,41 @@ namespace TypeTreeTools
                 sw.WriteLine("#define EditorVersionMajor {0}", split[0]);
                 sw.WriteLine("#define EditorVersionMinor {0}", split[1]);
                 sw.WriteLine("#define EditorContentsDir {0}", EditorApplication.applicationContentsPath);
-                var assembly = CompilationPipeline.GetAssemblies().First(a => a.name == "Assembly-CSharp-Editor");
+#if UNITY_2017_3_OR_NEWER
+                var assembly = UnityEditor.Compilation.CompilationPipeline.GetAssemblies().First(a => a.name == "Assembly-CSharp-Editor");
                 foreach (var define in assembly.defines)
                 {
                     sw.WriteLine("#define {0}", define);
                 }
+#else
+#if UNITY_5_3_OR_NEWER
+                sw.WriteLine("#define UNITY_5_3_OR_NEWER");
+#endif
+#if UNITY_5_4_OR_NEWER
+                sw.WriteLine("#define UNITY_5_4_OR_NEWER");
+#endif
+#if UNITY_5_5_OR_NEWER
+                sw.WriteLine("#define UNITY_5_5_OR_NEWER");
+#endif
+#if UNITY_5_6_OR_NEWER
+                sw.WriteLine("#define UNITY_5_6_OR_NEWER");
+#endif
+#if UNITY_2017_1_OR_NEWER
+                sw.WriteLine("#define UNITY_2017_1_OR_NEWER");
+#endif
+#if UNITY_2017_2_OR_NEWER
+    sw.WriteLine("#define UNITY_2017_2_OR_NEWER");
+#endif
+#if UNITY_2017
+                sw.WriteLine("#define UNITY_2017");
+#endif
+#if UNITY_64
+                sw.WriteLine("#define UNITY_64");
+#endif
+#if PLATFORM_ARCH_64
+                sw.WriteLine("#define PLATFORM_ARCH_64");
+#endif
+#endif
             }
         }
         [MenuItem("Tools/Build NativeTypeTreeTools.dll")]
