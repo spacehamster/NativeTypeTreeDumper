@@ -1,13 +1,15 @@
 #pragma once
 #include "dia2.h"
+#include <stdexcept>
 class PdbSymbolImporter {
+public:
+	bool LoadFromExe(const char* exePath);
+	void AssignAddress(const char* symbolName, void*& ptr) throw(std::runtime_error);
+	~PdbSymbolImporter();
+private:
 	IDiaDataSource* pDiaDataSource;
 	IDiaSession* pDiaSession;
 	IDiaSymbol* pGlobalSymbol;
-public:
-	bool LoadFromExe(const char* exePath);
-	bool GetRVA(const char* symolName, DWORD& rva);
-	bool GetAddress(const char* symolName, unsigned long long& addr);
-	bool AssignAddress(const char* symolName, void*& ptr);
-	~PdbSymbolImporter();
+	bool GetRVA(const char* symbolName, DWORD& rva);
+	bool GetAddress(const char* symbolName, unsigned long long& addr);
 };

@@ -13,7 +13,7 @@ namespace TypeTreeTools
 
         const string ProjectName = "TypeTreeTools";
         static readonly string[] VersionSplitChars =
-{
+        {
             ".", "a", "b", "rc", "f"
         };
         public static bool Is64BitProcess { get { return IntPtr.Size == 8; } }

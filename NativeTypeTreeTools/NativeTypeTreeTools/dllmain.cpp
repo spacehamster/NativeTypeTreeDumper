@@ -53,7 +53,6 @@ TypeTree__TypeTree_t TypeTree__TypeTree;
 typedef bool(__cdecl* GetTypeTree_t)(Object* obj, TransferInstructionFlags flags, TypeTree* tree);
 GetTypeTree_t GetTypeTree;
 #endif
-#ifdef UNITY_2018_1_OR_NEWER
 typedef Object*(__cdecl* GetSpriteAtlasDatabase_t)(void);
 GetSpriteAtlasDatabase_t GetSpriteAtlasDatabase;
 
@@ -68,7 +67,6 @@ GetAnnotationManager_t GetAnnotationManager;
 
 typedef Object* (__cdecl* GetMonoManager_t)(void);
 GetMonoManager_t GetMonoManager;
-#endif
 
 char** CommonString_BufferBegin;
 char** CommonString_BufferEnd;
@@ -95,18 +93,21 @@ void InitBindings(const char* moduleName) {
 	importer.AssignAddress("??0TypeTree@@QEAA@AEBUMemLabelId@@@Z",
 		(void*&)TypeTree__TypeTree);
 #endif
-#ifdef UNITY_2018_1_OR_NEWER
+#ifdef UNITY_2017_1_OR_NEWER
 	importer.AssignAddress("?GetSpriteAtlasDatabase@@YAAEAVSpriteAtlasDatabase@@XZ",
 		(void*&)GetSpriteAtlasDatabase);
+#endif
+#ifdef UNITY_2019_1_OR_NEWER
 	importer.AssignAddress("?GetSceneVisibilityState@@YAAEAVSceneVisibilityState@@XZ",
 		(void*&)GetSceneVisibilityState);
+#endif
 	importer.AssignAddress("?GetInspectorExpandedState@@YAAEAVInspectorExpandedState@@XZ",
 		(void*&)GetInspectorExpandedState);
 	importer.AssignAddress("?GetAnnotationManager@@YAAEAVAnnotationManager@@XZ",
 		(void*&)GetAnnotationManager);
 	importer.AssignAddress("?GetMonoManager@@YAAEAVMonoManager@@XZ",
 		(void*&)GetMonoManager);
-#endif
+
 #ifdef UNITY_2019_1_OR_NEWER
 	importer.AssignAddress("?GetTypeTree@TypeTreeCache@@YA_NPEBVObject@@W4TransferInstructionFlags@@AEAVTypeTree@@@Z",
 		(void*&)GetTypeTree);
@@ -124,28 +125,42 @@ void InitBindings(const char* moduleName) {
 #endif
 }
 Object* GetOrProduce(RTTIClass * type, int instanceID, ObjectCreationMode creationMode) {
-#ifdef UNITY_2018_1_OR_NEWER
 	switch(type->persistentTypeID)
 	{
 		case PersistentTypeID::SpriteAtlasDatabase:
-		return GetSpriteAtlasDatabase();
+			if (GetSpriteAtlasDatabase == NULL) throw std::runtime_error("GetSpriteAtlasDatabase is null");
+			return GetSpriteAtlasDatabase();
 		case PersistentTypeID::SceneVisibilityState:
+			if (GetSceneVisibilityState == NULL) throw std::runtime_error("GetSceneVisibilityState is null");
 			return GetSceneVisibilityState();
 		case PersistentTypeID::InspectorExpandedState:
+			if (GetInspectorExpandedState == NULL) throw std::runtime_error("GetInspectorExpandedState is null");
 			return GetInspectorExpandedState();
 		case PersistentTypeID::AnnotationManager:
+			if (GetAnnotationManager == NULL) throw std::runtime_error("GetAnnotationManager is null");
 			return GetAnnotationManager();
 		case PersistentTypeID::MonoManager:
+			if (GetMonoManager == NULL) throw std::runtime_error("GetMonoManager is null");
 			return GetMonoManager();
 	}
 	if (type->isAbstract) return NULL;
 	MemLabelId memLabel{};
 	return Object__Produce(type, type, 0, memLabel, ObjectCreationMode::Default);
-#else
-	if (type->isAbstract) return NULL;
-	MemLabelId memLabel{};
-	return Object__Produce(type, type, 0, memLabel, ObjectCreationMode::Default);
-#endif
+}
+void DestroyObject(Object* obj, RTTIClass* type) {
+	if (!obj->IsPersistent() &&
+		type->persistentTypeID != PersistentTypeID::SpriteAtlasDatabase &&
+		type->persistentTypeID != PersistentTypeID::SceneVisibilityState &&
+		type->persistentTypeID != PersistentTypeID::InspectorExpandedState &&
+		type->persistentTypeID != PersistentTypeID::AnnotationManager &&
+		type->persistentTypeID != PersistentTypeID::MonoManager &&
+		type->persistentTypeID != PersistentTypeID::AssetBundle)
+	{
+		Log("Getting MonoObject for %s - instanceID %d.\n", type->className, obj->instanceID);
+		MonoObject* managed = EditorUtility_CUSTOM_InstanceIDToObject(obj->instanceID);
+		Log("Destroying MonoObject. Exists %d\n", managed != NULL);
+		Object_CUSTOM_DestroyImmediate(managed, false);
+	}
 }
 extern "C" {
     EXPORT void DumpStructDebug() { 
@@ -247,58 +262,57 @@ extern "C" {
         Log("\n");
 
         CloseLog();
-    }
-    EXPORT void ExportStringData(const char* moduleName) {
-        InitBindings(moduleName);
-        Log("Writing Strings\n");
-        if (CommonString_BufferBegin == NULL ||
-            CommonString_BufferEnd == NULL) {
-            Log("CommonString pointers are null");
-        }
-        else {
-            unsigned long length = *CommonString_BufferEnd - *CommonString_BufferBegin - 1;
-            if (length <= 0) {
-                Log("Error: string.dat length is %lld", length);
-            }
-            else {
+	}
+	EXPORT void ExportStringData(const char* moduleName) {
+		try {
+			InitBindings(moduleName);
+			Log("Writing Strings\n");
+			unsigned long length = *CommonString_BufferEnd - *CommonString_BufferBegin - 1;
+			if (length <= 0) {
+				Log("Error: string.dat length is %lld", length);
+			}
+			else {
 				CreateDirectory(L"Output", NULL);
-                FILE* file = fopen("Output/strings.dat", "wb");
-                fwrite(*CommonString_BufferBegin, sizeof(char), length, file);
-                fclose(file);
-            }
-        }
-        CloseLog();
-    }
-    EXPORT void ExportClassesJson(const char* moduleName) {
-        Log("ExportClassesJson\n");
-		InitBindings(moduleName);
-        if (gRuntimeTypeArray != NULL) {
-            Log("%d types", gRuntimeTypeArray->count);
+				FILE* file = fopen("Output/strings.dat", "wb");
+				fwrite(*CommonString_BufferBegin, sizeof(char), length, file);
+				fclose(file);
+			}
+		}
+		catch (std::exception err) {
+			Log("Error: %s\n", err.what());
+		}
+		CloseLog();
+	}
+	EXPORT void ExportClassesJson(const char* moduleName) {
+		Log("ExportClassesJson\n");
+		try {
+			InitBindings(moduleName);
+			Log("%d types", gRuntimeTypeArray->count);
 			CreateDirectory(L"Output", NULL);
-            FILE* json = fopen("Output/classes.json", "w");
-            fprintf(json, "{\n");
-            for (int i = 0; i < gRuntimeTypeArray->count; i++) {
-                auto type = gRuntimeTypeArray->Types[i];
-                if (type == NULL) {
-                    Log("Found NULL pointer for RuntimeType %d\n", i);
-                }
-                fprintf(json, "    \"%d\": \"%s\"", type->persistentTypeID, type->className);
-                if (i < gRuntimeTypeArray->count - 1) {
-                    fprintf(json, ",");
-                }
-                fprintf(json, "\n");
-            }
-            fprintf(json, "}");
-            fclose(json);
-        }
-        else {
-            Log("Error: Could not initialize gRuntimeTypeArray");
-        }
-        CloseLog();
-    }
+			FILE* json = fopen("Output/classes.json", "w");
+			fprintf(json, "{\n");
+			for (int i = 0; i < gRuntimeTypeArray->count; i++) {
+				auto type = gRuntimeTypeArray->Types[i];
+				if (type == NULL) {
+					Log("Found NULL pointer for RuntimeType %d\n", i);
+				}
+				fprintf(json, "    \"%d\": \"%s\"", type->persistentTypeID, type->className);
+				if (i < gRuntimeTypeArray->count - 1) {
+					fprintf(json, ",");
+				}
+				fprintf(json, "\n");
+			}
+			fprintf(json, "}");
+			fclose(json);
+		}
+		catch (std::exception err) {
+			Log("Error: %s\n", err.what());
+		}
+		CloseLog();
+	}
 	EXPORT void ExportStructData(const char* moduleName, const char* unityVersion, uint32_t runtimePlatform) {
-		InitBindings(moduleName);
-		if (gRuntimeTypeArray != NULL) {
+		try {
+			InitBindings(moduleName);
 			Log("Dumping %d types\n", gRuntimeTypeArray->count);
 			CreateDirectory(L"Output", NULL);
 			FILE* file = fopen("Output/structs.dat", "wb");
@@ -367,20 +381,7 @@ extern "C" {
 				Log("Type %d Creating Binary Dump\n");
 				typeTree->Write(file);
 				typeCount++;
-
-				if (!obj->IsPersistent() &&
-					type->persistentTypeID != PersistentTypeID::SpriteAtlasDatabase &&
-					type->persistentTypeID != PersistentTypeID::SceneVisibilityState &&
-					type->persistentTypeID != PersistentTypeID::InspectorExpandedState &&
-					type->persistentTypeID != PersistentTypeID::AnnotationManager &&
-					type->persistentTypeID != PersistentTypeID::MonoManager &&
-					type->persistentTypeID != PersistentTypeID::AssetBundle)
-				{
-					Log("Getting MonoObject for %d %s - instanceID %d.\n", i, type->className, obj->instanceID);
-					MonoObject* managed = EditorUtility_CUSTOM_InstanceIDToObject(obj->instanceID);
-					Log("Destroying MonoObject. Exists %d\n", managed != NULL);
-					Object_CUSTOM_DestroyImmediate(managed, false);
-				}
+				DestroyObject(obj, type);
 			}
 			int zero = 0;
 			fwrite(&zero, 4, 1, file);
@@ -388,25 +389,19 @@ extern "C" {
 			fwrite(&typeCount, 4, 1, file);
 			fclose(file);
 		}
+		catch (std::exception err) {
+			Log("Error: %s\n", err.what());
+		}
 		CloseLog();
 	}
 	EXPORT void ExportStructDump(const char* moduleName) {
-		InitBindings(moduleName);
-		if (Object__Produce == NULL ||
-			TypeTree__TypeTree == NULL ||
-			EditorUtility_CUSTOM_InstanceIDToObject == NULL ||
-			Object_CUSTOM_DestroyImmediate == NULL) {
-			Log("Error initializing functions\n");
-			CloseLog();
-			return;
-		}
-        Log("kMemTypeTree\n");
-        Log("  %d %x\n", kMemTypeTree->m_RootReferenceWithSalt.m_Salt, kMemTypeTree->m_RootReferenceWithSalt.m_Salt);
-        Log("  %d %x\n", kMemTypeTree->m_RootReferenceWithSalt.m_RootReferenceIndex, kMemTypeTree->m_RootReferenceWithSalt.m_RootReferenceIndex);
-        Log("  %d %x\n", kMemTypeTree->identifier, kMemTypeTree->identifier);
-
-		if (gRuntimeTypeArray != NULL) {
-            Log("Dumping %d types\n", gRuntimeTypeArray->count);
+		try {
+			InitBindings(moduleName);
+			Log("kMemTypeTree\n");
+			Log("  %d %x\n", kMemTypeTree->m_RootReferenceWithSalt.m_Salt, kMemTypeTree->m_RootReferenceWithSalt.m_Salt);
+			Log("  %d %x\n", kMemTypeTree->m_RootReferenceWithSalt.m_RootReferenceIndex, kMemTypeTree->m_RootReferenceWithSalt.m_RootReferenceIndex);
+			Log("  %d %x\n", kMemTypeTree->identifier, kMemTypeTree->identifier);
+			Log("Dumping %d types\n", gRuntimeTypeArray->count);
 			CreateDirectory(L"Output", NULL);
 			FILE* file = fopen("Output/structs.dump", "w");
 			for (int i = 0; i < gRuntimeTypeArray->count; i++) {
@@ -453,24 +448,12 @@ extern "C" {
 				GenerateTypeTree(obj, typeTree, TransferInstructionFlags::SerializeGameRelease);
 #endif
 				fputs(typeTree->Dump(*CommonString_BufferBegin).c_str(), file);
-                if (!obj->IsPersistent() &&
-					type->persistentTypeID != PersistentTypeID::SpriteAtlasDatabase &&
-					type->persistentTypeID != PersistentTypeID::SceneVisibilityState &&
-					type->persistentTypeID != PersistentTypeID::InspectorExpandedState &&
-					type->persistentTypeID != PersistentTypeID::AnnotationManager &&
-					type->persistentTypeID != PersistentTypeID::MonoManager &&
-					type->persistentTypeID != PersistentTypeID::AssetBundle)
-                {
-                    Log("Getting MonoObject for %d %s - instanceID %d.\n", i, type->className, obj->instanceID);
-                    MonoObject* managed = EditorUtility_CUSTOM_InstanceIDToObject(obj->instanceID);
-                    Log("Destroying MonoObject. Exists %d\n", managed != NULL);
-                    Object_CUSTOM_DestroyImmediate(managed, false);
-                }
+				DestroyObject(obj, type);
 			}
 			fclose(file);
 		}
-		else {
-			Log("Error: Could not initialize gRuntimeTypeArray");
+		catch (std::exception err) {
+			Log("Error: %s\n", err.what());
 		}
 		CloseLog();
 	}

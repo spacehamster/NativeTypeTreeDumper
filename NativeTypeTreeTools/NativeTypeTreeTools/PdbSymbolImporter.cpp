@@ -1,6 +1,12 @@
 #include "PdbSymbolImporter.h"
-#include <string>
 #include "Util.h"
+#include <string>
+#include <stdexcept>
+#define SUCCEEDED(hr) (((HRESULT)(hr)) >= 0)
+#define FAILED(hr) (((HRESULT)(hr)) < 0)
+#define S_OK                                   ((HRESULT)0L)
+#define S_FALSE                                ((HRESULT)1L)
+
 std::wstring ConvertToWString(const char* str) {
     size_t cSize = strnlen_s(str, MAX_PATH) + 1;
     std::wstring wModuleName(cSize, L'#');
@@ -61,19 +67,24 @@ bool PdbSymbolImporter::GetRVA(const char* symbolName, DWORD& rva ) {
     }
     std::wstring wSymbolName = ConvertToWString(symbolName);
     IDiaEnumSymbols* pEnumSymbols;
-    if (pGlobalSymbol->findChildren(SymTagPublicSymbol, wSymbolName.c_str(), nsNone, &pEnumSymbols) >= 0) {
-        IDiaSymbol* pSymbol;
-        ULONG celt = 0;
-        while (pEnumSymbols->Next(1, &pSymbol, &celt) >= 0 && (celt == 1)) {
-            if (pSymbol->get_relativeVirtualAddress(&rva) < 0) {
-                Log("Error get_relativeVirtualAddress");
-            }
-            pSymbol->Release();
-        }
-    }
-    else {
+    if (FAILED(pGlobalSymbol->findChildren(SymTagPublicSymbol, wSymbolName.c_str(), nsNone, &pEnumSymbols))) {
         Log("Error finding children");
+        rva = 0;
         return false;
+    }
+    LONG symbolCount;
+    if (FAILED(pEnumSymbols->get_Count(&symbolCount)) || symbolCount == 0) {
+        Log("GetRVA: No symbols matching %s found\n", symbolName);
+        rva = 0;
+        return false;
+    };
+    IDiaSymbol* pSymbol;
+    ULONG celt = 0;
+    while (SUCCEEDED(pEnumSymbols->Next(1, &pSymbol, &celt)) && (celt == 1)) {
+        if (pSymbol->get_relativeVirtualAddress(&rva) != S_OK) {
+            Log("Error get_relativeVirtualAddress\n");
+        }
+        pSymbol->Release();
     }
     return true;
 }
@@ -88,21 +99,12 @@ bool PdbSymbolImporter::GetAddress(const char* symbolName, unsigned long long& a
 
     return true;
 }
-bool PdbSymbolImporter::AssignAddress(const char* symbolName, void*& target) {
+void PdbSymbolImporter::AssignAddress(const char* symbolName, void*& target) {
     unsigned long long address;
     if (!GetAddress(symbolName, address)) {
-        Log("Could not find address for %s", symbolName);
-        return false;
+        throw std::runtime_error(std::string("Could not find symbol ") + symbolName);
     }
-	DWORD rva;
-	GetRVA(symbolName, rva);
-	if (rva == 0xCCCCCCCC) {
-		Log("Cound not find address for %s: %p RVA %X\n", symbolName, address, rva);
-		return false;
-	}
-    Log("Found address for %s: %p RVA %X\n", symbolName, address, rva);
     target = (void*)address;
-    return true;
 }
 bool PdbSymbolImporter::LoadFromExe(const char* filePath) {
     if (pDiaDataSource != NULL ||
