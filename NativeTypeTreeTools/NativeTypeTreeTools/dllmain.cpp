@@ -73,6 +73,7 @@ GetMonoManager_t GetMonoManager;
 char** CommonString_BufferBegin;
 char** CommonString_BufferEnd;
 RuntimeTypeArray* gRuntimeTypeArray;
+MemLabelId* kMemBaseObject;
 MemLabelId* kMemTypeTree;
 void InitBindings(const char* moduleName) {
     PdbSymbolImporter importer;
@@ -80,6 +81,10 @@ void InitBindings(const char* moduleName) {
         return;
     };
     unsigned long long address;
+	importer.AssignAddress("?kMemBaseObject@@3UMemLabelId@@A",
+		(void*&)kMemBaseObject);
+	importer.AssignAddress("?kMemTypeTree@@3UMemLabelId@@A",
+		(void*&)kMemTypeTree);
     importer.AssignAddress("?BufferBegin@CommonString@Unity@@3QEBDEB", (void*&)CommonString_BufferBegin);
     importer.AssignAddress("?BufferEnd@CommonString@Unity@@3QEBDEB", (void*&)CommonString_BufferEnd);
 #ifdef UNITY_2017_3_OR_NEWER
@@ -91,10 +96,6 @@ void InitBindings(const char* moduleName) {
 	importer.AssignAddress("?Produce@Object@@SAPEAV1@PEBVType@Unity@@HUMemLabelId@@W4ObjectCreationMode@@@Z",
 		(void*&)Object__Produce);
 #endif
-
-	importer.AssignAddress("?kMemTypeTree@@3UMemLabelId@@A",
-		(void*&)kMemTypeTree);
-
 #if defined(UNITY_2019_1) || defined(UNITY_2019_2)
 	importer.AssignAddress("??0TypeTree@@QEAA@AEBUMemLabelId@@_N@Z",
 		(void*&)TypeTree__TypeTree);
@@ -153,11 +154,10 @@ Object* GetOrProduce(RTTIClass * type, int instanceID, ObjectCreationMode creati
 			return GetMonoManager();
 	}
 	if (type->isAbstract) return NULL;
-	MemLabelId memLabel{};
 #ifdef UNITY_2017_3_OR_NEWER
-	return Object__Produce(type, type, 0, memLabel, ObjectCreationMode::Default);
+	return Object__Produce(type, type, 0, *kMemBaseObject, ObjectCreationMode::Default);
 #else
-	return Object__Produce(type, 0, memLabel, ObjectCreationMode::Default);
+	return Object__Produce(type, 0, *kMemBaseObject, ObjectCreationMode::Default);
 #endif
 }
 void DestroyObject(Object* obj, RTTIClass* type) {
@@ -330,7 +330,10 @@ extern "C" {
 	EXPORT void ExportStructData(const char* moduleName, const char* unityVersion, uint32_t runtimePlatform) {
 		try {
 			InitBindings(moduleName);
-			Log("Dumping %d types\n", gRuntimeTypeArray->count);
+			Log("Dumping %d types. ModuleName %s, UnityVersion %s\n", 
+				gRuntimeTypeArray->count, 
+				moduleName, 
+				unityVersion);
 			CreateDirectory(L"Output", NULL);
 			FILE* file = fopen("Output/structs.dat", "wb");
 
@@ -346,20 +349,22 @@ extern "C" {
 			for (int i = 0; i < gRuntimeTypeArray->count; i++) {
 				RTTIClass* type = gRuntimeTypeArray->Types[i];
 				RTTIClass* iter = type;
-				Log("Type %d Child Class %s, %s, %s, %d, %d\n",
+				Log("Type %d Child Class %s, %d, %d\n",
 					i,
-					type->classNamespace ,
 					type->className,
 					type->persistentTypeID,
 					type->size);
 				Log("Type %d getting base type", i);
 				while (iter != NULL && iter->isAbstract) {
+					Log("%s is abstract\n", iter->className);
 					iter = iter->base;
 				}
-				if (iter == NULL) continue;
-				Log("Type %d BaseType is %s %s %s %d %d\n",
+				if (iter == NULL) {
+					Log("Could not find concrete type for %d %s\n", i, type->className);
+					continue;
+				}
+				Log("Type %d BaseType is %s %d %d\n",
 					i,
-					iter->classNamespace,
 					iter->className,
 					iter->persistentTypeID,
 					iter->size);
@@ -369,7 +374,7 @@ extern "C" {
 					Log("Type %d %s: Produced null object\n", i, iter->className);
 					continue;
 				}
-				Log("Type %d: Produced object %d\n", i, obj->instanceID);
+				Log("Type %d Produced object %d\n", i, obj->instanceID);
 				Log("Type %d Getting Type Tree\n", i);
 
 				TypeTree* typeTree = (TypeTree*)malloc(sizeof(TypeTree));
