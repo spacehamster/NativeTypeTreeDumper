@@ -20,3 +20,10 @@ void CloseLog() {
         g_Log = NULL;
     }
 }
+std::wstring Widen(const char* str) {
+    size_t cSize = strnlen_s(str, MAX_PATH) + 1;
+    std::wstring wModuleName(cSize, L'#');
+    size_t charConvertedCount;
+    mbstowcs_s(&charConvertedCount, &wModuleName[0], cSize, str, cSize - 1);
+    return wModuleName;
+}

@@ -7,13 +7,6 @@
 #define S_OK                                   ((HRESULT)0L)
 #define S_FALSE                                ((HRESULT)1L)
 
-std::wstring ConvertToWString(const char* str) {
-    size_t cSize = strnlen_s(str, MAX_PATH) + 1;
-    std::wstring wModuleName(cSize, L'#');
-    size_t charConvertedCount;
-    mbstowcs_s(&charConvertedCount, &wModuleName[0], cSize, str, cSize - 1);
-    return wModuleName;
-}
 bool DoLoadDataFromExe(
     const wchar_t* szFilename,
     IDiaDataSource** ppSource,
@@ -65,7 +58,7 @@ bool PdbSymbolImporter::GetRVA(const char* symbolName, DWORD& rva ) {
         rva = 0;
         return false;
     }
-    std::wstring wSymbolName = ConvertToWString(symbolName);
+    std::wstring wSymbolName = Widen(symbolName);
     IDiaEnumSymbols* pEnumSymbols;
     if (FAILED(pGlobalSymbol->findChildren(SymTagPublicSymbol, wSymbolName.c_str(), nsNone, &pEnumSymbols))) {
         Log("Error finding children");
@@ -96,7 +89,6 @@ bool PdbSymbolImporter::GetAddress(const char* symbolName, unsigned long long& a
     }
     HMODULE baseAddress = GetModuleHandle(L"Unity.exe");
     address = (unsigned long long)baseAddress + rva;
-
     return true;
 }
 void PdbSymbolImporter::AssignAddress(const char* symbolName, void*& target) {
@@ -106,13 +98,13 @@ void PdbSymbolImporter::AssignAddress(const char* symbolName, void*& target) {
     }
     target = (void*)address;
 }
-bool PdbSymbolImporter::LoadFromExe(const char* filePath) {
+void PdbSymbolImporter::LoadFromExe(const char* filePath) {
     if (pDiaDataSource != NULL ||
         pDiaSession != NULL ||
         pGlobalSymbol != NULL) {
-        return false;
+        throw std::runtime_error("Error initializing SymbolImporter");
     }
-    std::wstring wFilePath = ConvertToWString(filePath);
+    std::wstring wFilePath = Widen(filePath);
     DoLoadDataFromExe(wFilePath.c_str(), &pDiaDataSource, &pDiaSession, &pGlobalSymbol);
 }
 PdbSymbolImporter::~PdbSymbolImporter() {

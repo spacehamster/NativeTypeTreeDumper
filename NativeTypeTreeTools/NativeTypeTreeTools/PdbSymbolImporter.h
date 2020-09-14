@@ -3,7 +3,7 @@
 #include <stdexcept>
 class PdbSymbolImporter {
 public:
-	bool LoadFromExe(const char* exePath);
+	void LoadFromExe(const char* exePath) throw(std::runtime_error);
 	void AssignAddress(const char* symbolName, void*& ptr) throw(std::runtime_error);
 	~PdbSymbolImporter();
 private:

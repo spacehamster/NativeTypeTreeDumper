@@ -77,9 +77,7 @@ MemLabelId* kMemBaseObject;
 MemLabelId* kMemTypeTree;
 void InitBindings(const char* moduleName) {
     PdbSymbolImporter importer;
-    if (!importer.LoadFromExe(moduleName)) {
-        return;
-    };
+	importer.LoadFromExe(moduleName);
     unsigned long long address;
 	importer.AssignAddress("?kMemBaseObject@@3UMemLabelId@@A",
 		(void*&)kMemBaseObject);
@@ -477,4 +475,35 @@ extern "C" {
 		}
 		CloseLog();
 	}
+
+	typedef void* (__cdecl* GetUnityVersion_t)(void);
+	GetUnityVersion_t GetUnityVersion;
+
+	typedef char* (__cdecl* MonoStringToUTF8_t)(void*);
+	MonoStringToUTF8_t monostring_to_utf8;
+
+	EXPORT void TestVersion(const char* moduleName, const char* monoLibName) {
+		Log("Hello World!\n");
+		try {
+			PdbSymbolImporter importer;
+			importer.LoadFromExe(moduleName);
+			importer.AssignAddress("?Application_Get_Custom_PropUnityVersion@@YAPEAVScriptingBackendNativeStringPtrOpaque@@XZ",
+				(void*&)GetUnityVersion);
+			std::wstring wMonoLibName = Widen(monoLibName);
+			HMODULE monoModule = GetModuleHandle(wMonoLibName.c_str());
+			Log("Got monoModule %p!\n", monoModule);
+			monostring_to_utf8 = (MonoStringToUTF8_t)GetProcAddress(monoModule, "mono_string_to_utf8");
+			Log("Got monostring_to_utf8 %p!\n", monostring_to_utf8);
+			void* monostring = GetUnityVersion();
+			Log("Got Monostring %p!\n", monostring);
+			char* str = monostring_to_utf8(monostring);
+			Log("Got Str %s!\n", str);
+		}
+		catch (std::exception err) {
+			Log("Error: %s\n", err.what());
+		}
+		CloseLog();
+	}
 }
+
+
