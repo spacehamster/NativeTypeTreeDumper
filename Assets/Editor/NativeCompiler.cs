@@ -50,8 +50,8 @@ namespace TypeTreeTools
             process.WaitForExit();
             if(process.ExitCode != 0)
             {
-                Debug.LogErrorFormat("Error running command {0} {1}",
-                    exe, arguments);
+                Debug.LogError(string.Format("Error running command {0} {1}",
+                    exe, arguments));
             }
             if (!Directory.Exists("Logs")) Directory.CreateDirectory("Logs");
             File.WriteAllText("Logs/BuildResult.txt", strOutput);

@@ -1,5 +1,11 @@
 #ifndef UTIL_H
 #define UTIL_H
+#include "defines.h"
+#define VERSION_GE(major, minor) EditorVersionMajor > major || (EditorVersionMajor == major && EditorVersionMinor >= minor)
+#define VERSION_GT(major, minor) EditorVersionMajor > major || (EditorVersionMajor == major && EditorVersionMinor > minor)
+#define VERSION_LE(major, minor) EditorVersionMajor < major || (EditorVersionMajor == major && EditorVersionMinor <= minor)
+#define VERSION_LT(major, minor) EditorVersionMajor < major || (EditorVersionMajor == major && EditorVersionMinor < minor)
+#define VERSION_EQ(major, minor) EditorVersionMajor == major && EditorVersionMinor == minor
 #include <string>
 void Log(const char* fmt, ...);
 void CloseLog();

@@ -83,8 +83,10 @@ void InitBindings(const char* moduleName) {
 		(void*&)kMemBaseObject);
 	importer.AssignAddress("?kMemTypeTree@@3UMemLabelId@@A",
 		(void*&)kMemTypeTree);
+#if VERSION_GE(5, 0)
     importer.AssignAddress("?BufferBegin@CommonString@Unity@@3QEBDEB", (void*&)CommonString_BufferBegin);
     importer.AssignAddress("?BufferEnd@CommonString@Unity@@3QEBDEB", (void*&)CommonString_BufferEnd);
+#endif
 #ifdef UNITY_2017_3_OR_NEWER
     importer.AssignAddress("?ms_runtimeTypes@RTTI@@0URuntimeTypeArray@1@A", (void*&)gRuntimeTypeArray);
 	importer.AssignAddress("?Produce@Object@@CAPEAV1@PEBVType@Unity@@0HUMemLabelId@@W4ObjectCreationMode@@@Z",
@@ -279,6 +281,7 @@ extern "C" {
         CloseLog();
 	}
 	EXPORT void ExportStringData(const char* moduleName) {
+#if VERSION_GE(5, 0)
 		try {
 			InitBindings(moduleName);
 			Log("Writing Strings\n");
@@ -297,6 +300,7 @@ extern "C" {
 			Log("Error: %s\n", err.what());
 		}
 		CloseLog();
+#endif
 	}
 	EXPORT void ExportClassesJson(const char* moduleName) {
 		Log("ExportClassesJson\n");
@@ -469,35 +473,6 @@ extern "C" {
 				DestroyObject(obj, type);
 			}
 			fclose(file);
-		}
-		catch (std::exception err) {
-			Log("Error: %s\n", err.what());
-		}
-		CloseLog();
-	}
-
-	typedef void* (__cdecl* GetUnityVersion_t)(void);
-	GetUnityVersion_t GetUnityVersion;
-
-	typedef char* (__cdecl* MonoStringToUTF8_t)(void*);
-	MonoStringToUTF8_t monostring_to_utf8;
-
-	EXPORT void TestVersion(const char* moduleName, const char* monoLibName) {
-		Log("Hello World!\n");
-		try {
-			PdbSymbolImporter importer;
-			importer.LoadFromExe(moduleName);
-			importer.AssignAddress("?Application_Get_Custom_PropUnityVersion@@YAPEAVScriptingBackendNativeStringPtrOpaque@@XZ",
-				(void*&)GetUnityVersion);
-			std::wstring wMonoLibName = Widen(monoLibName);
-			HMODULE monoModule = GetModuleHandle(wMonoLibName.c_str());
-			Log("Got monoModule %p!\n", monoModule);
-			monostring_to_utf8 = (MonoStringToUTF8_t)GetProcAddress(monoModule, "mono_string_to_utf8");
-			Log("Got monostring_to_utf8 %p!\n", monostring_to_utf8);
-			void* monostring = GetUnityVersion();
-			Log("Got Monostring %p!\n", monostring);
-			char* str = monostring_to_utf8(monostring);
-			Log("Got Str %s!\n", str);
 		}
 		catch (std::exception err) {
 			Log("Error: %s\n", err.what());

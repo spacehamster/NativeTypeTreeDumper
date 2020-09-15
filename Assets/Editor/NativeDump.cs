@@ -1,5 +1,4 @@
-﻿using NUnit.Framework;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -48,21 +47,6 @@ namespace TypeTreeTools
         static void DoTestDump()
         {
             Invoke<DumpStructDebug>();
-        }
-
-        [MenuItem("Tools/Dump/Test Version")]
-        static void DoTestVersion()
-        {
-            var monoLibs = new List<string>();
-            foreach(var module in System.Diagnostics.Process.GetCurrentProcess().Modules)
-            {
-                if (module.ToString().StartsWith("mono"))
-                {
-                    Debug.Log(string.Format("Found Module: {0} {1:X}", module.ToString(), GetModuleHandle(module.ToString()).ToInt64()));
-                    monoLibs.Add(module.ToString());
-                }
-            }
-            Invoke<TestVersion>(System.Diagnostics.Process.GetCurrentProcess().MainModule.FileName, monoLibs[0]);
         }
 
         public static bool Is64BitProcess { get { return IntPtr.Size == 8; } }
