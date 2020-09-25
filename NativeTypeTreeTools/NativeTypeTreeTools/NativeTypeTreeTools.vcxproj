@@ -167,17 +167,24 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="CommonStrings.h" />
     <ClInclude Include="Defines.h" />
-    <ClInclude Include="framework.h" />
-    <ClInclude Include="dllmain.h" />
-    <ClInclude Include="PdbSymbolImporter.h" />
-    <ClInclude Include="PersistentTypeID.h" />
-    <ClInclude Include="Structs.h" />
+    <ClInclude Include="Exporter.h" />
+    <ClInclude Include="MemLabel.h" />
+    <ClInclude Include="NativeObject.h" />
+    <ClInclude Include="SymbolImporter.h" />
+    <ClInclude Include="Enums.h" />
+    <ClInclude Include="RuntimeTypeInfo.h" />
+    <ClInclude Include="TypeTree.h" />
     <ClInclude Include="Util.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dllmain.cpp" />
-    <ClCompile Include="PdbSymbolImporter.cpp" />
+    <ClCompile Include="CommonStrings.cpp" />
+    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="Exporter.cpp" />
+    <ClCompile Include="NativeObject.cpp" />
+    <ClCompile Include="SymbolImporter.cpp" />
+    <ClCompile Include="RuntimeTypeInfo.cpp" />
     <ClCompile Include="TypeTree.cpp" />
     <ClCompile Include="Util.cpp" />
   </ItemGroup>
